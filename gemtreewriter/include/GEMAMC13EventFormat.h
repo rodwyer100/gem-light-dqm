@@ -15,7 +15,8 @@ class VFATdata
     uint16_t fcrc_calc;                ///<Check Sum value recalculated, 16 bits
     int      fSlotNumber;              ///<Calculated chip position
     bool     fisBlockGood;             ///<Shows if block is good (control bits, chip ID and CRC checks)
-  
+    uint16_t controlData;	       ///<For ZeroSuppression. Shows which packets (out of sixteen) are nonempty	
+    uint8_t packets[16];
   public:
     //!Empty constructor. Functions used to assign data members.
     VFATdata(){}
@@ -46,28 +47,52 @@ class VFATdata
     ~VFATdata(){}
 
     //!Read first word from the block.
-    void read_fw(uint64_t word)
+    void read_fw(uint64_t word, int c)
     {
-      fPos = 0x3f & (word >> 56);
-      fCRCcheck = 0xff & (word >> 48);
-      fHeader = 0xff & (word >> 40);
-      fEC = 0xff & (word >> 32);
-      fBC = 0xffff & (word >> 16);
-      fmsData = 0xffff000000000000 & (word << 48);
+	switch(c){
+		case 1:fPos = 0x3f & (word >> 56);
+			fCRCcheck = 0xff & (word >> 48);
+			fHeader = 0xff & (word >> 40);
+			fEC = 0xff & (word >> 32);
+			fBC = 0xffff & (word >> 16);
+			fmsData = 0xffff000000000000 & (word << 48);
+			break;
+		case 2:fPos = 0x3f & (word >> 56);
+			fCRCcheck = 0xff & (word >> 48);
+			fHeader = 0xff & (word >> 40);
+			fEC = 0xff & (word >> 32);
+			fBC = 0xffff & (word >> 16);
+			//fmsData = 0xffff000000000000 & (word << 48);
+			controlData = word << 16
+			break;
+	}
     }
     
     //!Read second word from the block.
-    void read_sw(uint64_t word)
+    void read_sw(uint64_t word, int c)
     {
-      fmsData = fmsData | (0x0000ffffffffffff & word >> 16);
-      flsData = 0xffff000000000000 & (word << 48);
+	    switch(c){
+		    case 1:fmsData = fmsData | (0x0000ffffffffffff & word >> 16);
+			   flsData = 0xffff000000000000 & (word << 48);
+			   break;
+		    case 2:
+			    if(){fcrc = 0xffff & word;}
+			    break;
+	    }
+      
+      
     }
     
     //!Read third word from the block.
-    void read_tw(uint64_t word)
+    void read_tw(uint64_t word,int c)
     {
-      flsData = flsData | (0x0000ffffffffffff & word >> 16);
-      fcrc = 0xffff & word;
+	    switch(c){
+		    case 1:flsData = flsData | (0x0000ffffffffffff & word >> 16);
+			    fcrc = 0xffff & word;
+			    break;
+		    case 2: break;
+	    
+	    }
     }
     
     uint8_t   Pos        (){ return fPos;        }
