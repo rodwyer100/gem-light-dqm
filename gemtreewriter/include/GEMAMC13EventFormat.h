@@ -16,7 +16,8 @@ class VFATdata
     int      fSlotNumber;              ///<Calculated chip position
     bool     fisBlockGood;             ///<Shows if block is good (control bits, chip ID and CRC checks)
     uint16_t controlData;	       ///<For ZeroSuppression. Shows which packets (out of sixteen) are nonempty	
-    uint8_t packets[16];
+    int count;			       ///<For ZeroSuppression. Shows how many packets are nonempty
+    uint8_t packets[16];	       ///<For Containing the Packets
   public:
     //!Empty constructor. Functions used to assign data members.
     VFATdata(){}
@@ -58,6 +59,8 @@ class VFATdata
 			fmsData = 0xffff000000000000 & (word << 48);
 			break;
 		case 2:fPos = 0x3f & (word >> 56);
+			//The method is exactly the same as before, except the laft 16 bits of line 1 are not vfat data, but
+			//a 16 bit number with bits indicating which packet is populated with anything (8 channels for a packet)
 			fCRCcheck = 0xff & (word >> 48);
 			fHeader = 0xff & (word >> 40);
 			fEC = 0xff & (word >> 32);
@@ -75,9 +78,21 @@ class VFATdata
 		    case 1:fmsData = fmsData | (0x0000ffffffffffff & word >> 16);
 			   flsData = 0xffff000000000000 & (word << 48);
 			   break;
-		    case 2:
-			    if(){fcrc = 0xffff & word;}
-			    break;
+		    case 2:count=0;
+			   //This populates an array of 8 bit numbers whose length corresponds to the number of packets.
+			   uint16_t helper=controlData;
+			   int i=0;
+			   while (helper > 0) {
+            			count += helper & 1;
+            			helper >>= 1;
+        		   }
+			   while(count>0){
+				packets[i] = (word >> 64-(i+1)*8);
+			   	i+=1;
+				count-=1;
+				if(i*8==56){break;}
+			   }
+			   
 	    }
       
       
