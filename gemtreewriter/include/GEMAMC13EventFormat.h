@@ -66,7 +66,7 @@ class VFATdata
 			fEC = 0xff & (word >> 32);
 			fBC = 0xffff & (word >> 16);
 			//fmsData = 0xffff000000000000 & (word << 48);
-			controlData = word << 16
+			controlData = word
 			break;
 	}
     }
