@@ -18,7 +18,8 @@ class VFATdata
     uint16_t controlData;	       ///<For ZeroSuppression. Shows which packets (out of sixteen) are nonempty	
     int count;			       ///<For ZeroSuppression. Shows how many packets are nonempty
     uint8_t packets[16];	       ///<For Containing the Packets
-  public:
+    int counter2;		       ///<Purely counting variable. Must be in so that packets aren't overwritten
+   public:
     //!Empty constructor. Functions used to assign data members.
     VFATdata(){}
     //!Constructor requiring arguments.
@@ -66,7 +67,7 @@ class VFATdata
 			fEC = 0xff & (word >> 32);
 			fBC = 0xffff & (word >> 16);
 			//fmsData = 0xffff000000000000 & (word << 48);
-			controlData = word
+			controlData = 0xffff & word
 			break;
 	}
     }
@@ -81,17 +82,18 @@ class VFATdata
 		    case 2:count=0;
 			   //This populates an array of 8 bit numbers whose length corresponds to the number of packets.
 			   uint16_t helper=controlData;
-			   int i=0;
 			   while (helper > 0) {
             			count += helper & 1;
             			helper >>= 1;
         		   }
+			   int i=0
 			   while(count>0){
-				packets[i] = (word >> 64-(i+1)*8);
-			   	i+=1;
+				packets[i] =0xffff & (word >> 64-(counter2+1)*8);
+			   	counter2+=1;
 				count-=1;
-				if(i*8==56){break;}
+				if(counter2*8==56){break;}
 			   }
+			   break;
 			   
 	    }
       
@@ -105,8 +107,7 @@ class VFATdata
 		    case 1:flsData = flsData | (0x0000ffffffffffff & word >> 16);
 			    fcrc = 0xffff & word;
 			    break;
-		    case 2: break;
-	    
+		    case 2: 	    
 	    }
     }
     
