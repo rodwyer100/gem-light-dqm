@@ -110,15 +110,21 @@ class GEMUnpacker
               std::fread(&m_word, sizeof(uint64_t), 1, m_file);
         //printf("VFAT WORD 1\n");
         //printf("%016llX\n", m_word);
-              m_vfatdata->read_fw(m_word);
+              int helper=2
+              m_vfatdata->read_fw(m_word,helper);
               std::fread(&m_word, sizeof(uint64_t), 1, m_file);
         //printf("VFAT WORD 2\n");
         //printf("%016llX\n", m_word);
-              m_vfatdata->read_sw(m_word);
-              std::fread(&m_word, sizeof(uint64_t), 1, m_file);
+              m_vfatdata->read_sw(m_word,helper);
+              if(getNeed3()>0||helper==1){
+               std::fread(&m_word, sizeof(uint64_t), 1, m_file); 
         //printf("VFAT WORD 3\n");
         //printf("%016llX\n", m_word);
-              m_vfatdata->read_tw(m_word);
+              m_vfatdata->read_tw(m_word);}
+              if(getNeed4()>0){
+                std::fread(&m_word, sizeof(uint64_t), 1, m_file); 
+                m_vfatdata->read_4w(m_word);
+              }
               //
         //printf("VFAT MS Data 3\n");
         //printf("%016llX\n", m_vfatdata->msData());
