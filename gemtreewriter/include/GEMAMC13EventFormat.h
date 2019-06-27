@@ -18,7 +18,9 @@ class VFATdata
     uint16_t controlData;	       ///<For ZeroSuppression. Shows which packets (out of sixteen) are nonempty	
     int count;			       ///<For ZeroSuppression. Shows how many packets are nonempty
     uint8_t packets[16];	       ///<For Containing the Packets
-    int counter2;		       ///<Purely counting variable. Must be in so that packets aren't overwritten
+    int need3=0;		       ///<Determines if we need to read the crc off in the third line
+    int need4=0;		       ///<Determines if we need to read a fourth instance to read off CRC codes.
+
    public:
     //!Empty constructor. Functions used to assign data members.
     VFATdata(){}
@@ -88,18 +90,19 @@ class VFATdata
         		   }
 			   int i=0
 			   while(count>0){
-				packets[i] =0xffff & (word >> 64-(counter2+1)*8);
-			   	counter2+=1;
+				packets[i] = 0xffff & (word >> 64-(i+1)*8);
+			   	i+=1;
 				count-=1;
-				if(counter2*8==56){break;}
+				if((i*8==56&&count==0)){need3=1;}
+				if((i*8==64&&count==0)){need3=2;}
+				//need3 will take 0 if third line not needed, 1 if needed just to read of half of crc,2 if all, 3 if needed for data and crc
+				if(i*8==64){break;}
 			   }
-			   break;
-			   
-	    }
-      
-      
+			   if(i<7){fcrc = 0xffff & word;need3=0;break;}//In case we don't even need a third line
+			   fcrc= 0xffff & (word << 8);//In case it cuts it off
+			   break;		   
+	    }   
     }
-    
     //!Read third word from the block.
     void read_tw(uint64_t word,int c)
     {
@@ -107,10 +110,38 @@ class VFATdata
 		    case 1:flsData = flsData | (0x0000ffffffffffff & word >> 16);
 			    fcrc = 0xffff & word;
 			    break;
-		    case 2: 	    
+		    case 2:
+			    if(need3==1){fcrc=fcrc|(0xff & word >> 56);break;}//If it was cut off before
+			    if(need3==2){fcrc=0xffff & (word >> 48);break;}//If we just barely needed the full line
+			    if(need3==3){
+				    int i=0;
+				    while(count>0){
+					    packets[i+8] = 0xff & (word >> 64-(i+1)*8);
+					    i+=1;
+					    count-=1;
+					    if(i*8==56){need4=1;}//Takes 0 if 4rth line not needed, Takes 1 if 1/2 crc needed, Takes 2 otherwise
+					    if(i*8==64){need4=2;break;}
+				    }
+				    if(0<i&&i<7){fcrc= 0xffff & (word >> 64-(i+2)*8);}//In case the whole word stays in
+				    if(i*8==56){fcrc= 0xffff & (word << 8)};//In case it cuts it off
+				    break;
+			    } 
+			    break;	    
 	    }
     }
-    
+    void read_4w(uint64_t word)
+    {
+	    if(need4==1){fcrc=fcrc|(0xff & word >> 56);break;}//if it had previously cut it off before
+	    fcrc=0xffff & (word >> 48);
+	    break;	    
+    }
+    int getNeed3(){
+	    return need3;	
+    }
+    int getNeed4(){
+	    return need4;	
+    }
+
     uint8_t   Pos        (){ return fPos;        }
     uint16_t  BC         (){ return fBC;         }
     uint8_t   Header     (){ return fHeader;     }
