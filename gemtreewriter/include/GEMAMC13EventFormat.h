@@ -18,6 +18,7 @@ class VFATdata
     uint16_t controlData;	       ///<For ZeroSuppression. Shows which packets (out of sixteen) are nonempty	
     int count;			       ///<For ZeroSuppression. Shows how many packets are nonempty
     uint8_t packets[16];	       ///<For Containing the Packets
+    int need2=0;		       ///<Determines if we need a second line
     int need3=0;		       ///<Determines if we need to read the crc off in the third line
     int need4=0;		       ///<Determines if we need to read a fourth instance to read off CRC codes.
     uint4_t Suppression;	       ///<Determines what type, if any, of suppression is used
@@ -58,6 +59,8 @@ class VFATdata
 	fPos = 0x3f & (word >> 56);
 	fCRCcheck = 0xff & (word >> 48);
 	fHeader = 0xff & (word >> 40);
+	if((suppression==2||suppression==3||suppression==6||suppression==7)&&Empty){need2=1;return;}//Package suppression
+	if((suppression==1||suppression==5)&&Empty){fEC = 0xff & (word >> 32);fBC = 0xffff & (word >> 16);fcrc = 0xffff & word;need2=1;return;}//Data Suppression
 	fEC = 0xff & (word >> 32);
 	fBC = 0xffff & (word >> 16);
 	if(suppression< 0x4){
@@ -72,12 +75,6 @@ class VFATdata
     void read_sw(uint64_t word, int c)
     {
 	    if(suppression<4){
-		if(suppression>=1){//Package suppression
-			
-			if(suppression==1){//Data Suppression
-			
-			}
-		}
 	    	fmsData = fmsData | (0x0000ffffffffffff & word >> 16);
 		flsData = 0xffff000000000000 & (word << 48);
 		return;
@@ -131,6 +128,9 @@ class VFATdata
 	    if(need4==1){fcrc=fcrc|(0xff & word >> 56);break;}//if it had previously cut it off before
 	    fcrc=0xffff & (word >> 48);
 	    break;	    
+    }
+    int getNeed2(){
+	    return need2;	
     }
     int getNeed3(){
 	    return need3;	
