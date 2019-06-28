@@ -20,6 +20,7 @@ class VFATdata
     uint8_t packets[16];	       ///<For Containing the Packets
     int need3=0;		       ///<Determines if we need to read the crc off in the third line
     int need4=0;		       ///<Determines if we need to read a fourth instance to read off CRC codes.
+    uint4_t Suppression;	       ///<Determines what type, if any, of suppression is used
 
    public:
     //!Empty constructor. Functions used to assign data members.
@@ -53,80 +54,70 @@ class VFATdata
     //!Read first word from the block.
     void read_fw(uint64_t word, int c)
     {
-	switch(c){
-		case 1:fPos = 0x3f & (word >> 56);
-			fCRCcheck = 0xff & (word >> 48);
-			fHeader = 0xff & (word >> 40);
-			fEC = 0xff & (word >> 32);
-			fBC = 0xffff & (word >> 16);
-			fmsData = 0xffff000000000000 & (word << 48);
-			break;
-		case 2:fPos = 0x3f & (word >> 56);
-			//The method is exactly the same as before, except the laft 16 bits of line 1 are not vfat data, but
-			//a 16 bit number with bits indicating which packet is populated with anything (8 channels for a packet)
-			fCRCcheck = 0xff & (word >> 48);
-			fHeader = 0xff & (word >> 40);
-			fEC = 0xff & (word >> 32);
-			fBC = 0xffff & (word >> 16);
-			//fmsData = 0xffff000000000000 & (word << 48);
-			controlData = 0xffff & word
-			break;
+	suppression = 0x4 & (word >> 61);
+	fPos = 0x3f & (word >> 56);
+	fCRCcheck = 0xff & (word >> 48);
+	fHeader = 0xff & (word >> 40);
+	fEC = 0xff & (word >> 32);
+	fBC = 0xffff & (word >> 16);
+	if(suppression< 0x4){
+		fmsData = 0xffff000000000000 & (word << 48);
+		return;
 	}
+	//fmsData = 0xffff000000000000 & (word << 48);
+	controlData = 0xffff & word//a 16 bit number with bits indicating which packet is populated with anything (8 channels for a packet)
     }
     
     //!Read second word from the block.
     void read_sw(uint64_t word, int c)
     {
-	    switch(c){
-		    case 1:fmsData = fmsData | (0x0000ffffffffffff & word >> 16);
-			   flsData = 0xffff000000000000 & (word << 48);
-			   break;
-		    case 2:count=0;
-			   //This populates an array of 8 bit numbers whose length corresponds to the number of packets.
-			   uint16_t helper=controlData;
-			   while (helper > 0) {
-            			count += helper & 1;
-            			helper >>= 1;
-        		   }
-			   int i=0
-			   while(count>0){
-				packets[i] = 0xffff & (word >> 64-(i+1)*8);
-			   	i+=1;
-				count-=1;
-				if((i*8==56&&count==0)){need3=1;}
-				if((i*8==64&&count==0)){need3=2;}
-				//need3 will take 0 if third line not needed, 1 if needed just to read of half of crc,2 if all, 3 if needed for data and crc
-				if(i*8==64){break;}
-			   }
-			   if(i<7){fcrc = 0xffff & word;need3=0;break;}//In case we don't even need a third line
-			   fcrc= 0xffff & (word << 8);//In case it cuts it off
-			   break;		   
-	    }   
+	    if(suppression< 0x4){
+	    	fmsData = fmsData | (0x0000ffffffffffff & word >> 16);
+		flsData = 0xffff000000000000 & (word << 48);
+		return;
+	    }
+	    count=0;
+	    //This populates an array of 8 bit numbers whose length corresponds to the number of packets.
+ 	    uint16_t helper=controlData;
+	    while (helper > 0) {
+            	count += helper & 1;
+            	helper >>= 1;
+	    }
+	    int i=0;
+	    while(count>0){
+		    packets[i] = 0xffff & (word >> 64-(i+1)*8);
+		    i+=1;
+		    count-=1;
+		    if((i*8==56&&count==0)){need3=1;}
+		    if((i*8==64&&count==0)){need3=2;}
+		    //need3 will take 0 if third line not needed, 1 if needed just to read of half of crc,2 if all, 3 if needed for data and crc
+		    if(i*8==64){break;}
+	    }
+	    if(i<7){fcrc = 0xffff & word;need3=0;break;}//In case we don't even need a third line
+	    fcrc= 0xffff & (word << 8);//In case it cuts it off		     
     }
     //!Read third word from the block.
     void read_tw(uint64_t word,int c)
     {
-	    switch(c){
-		    case 1:flsData = flsData | (0x0000ffffffffffff & word >> 16);
-			    fcrc = 0xffff & word;
-			    break;
-		    case 2:
-			    if(need3==1){fcrc=fcrc|(0xff & word >> 56);break;}//If it was cut off before
-			    if(need3==2){fcrc=0xffff & (word >> 48);break;}//If we just barely needed the full line
-			    if(need3==3){
-				    int i=0;
-				    while(count>0){
-					    packets[i+8] = 0xff & (word >> 64-(i+1)*8);
-					    i+=1;
-					    count-=1;
-					    if(i*8==56){need4=1;}//Takes 0 if 4rth line not needed, Takes 1 if 1/2 crc needed, Takes 2 otherwise
-					    if(i*8==64){need4=2;break;}
-				    }
-				    if(0<i&&i<7){fcrc= 0xffff & (word >> 64-(i+2)*8);}//In case the whole word stays in
-				    if(i*8==56){fcrc= 0xffff & (word << 8)};//In case it cuts it off
-				    break;
-			    } 
-			    break;	    
+	    if(suppression< 0x4){
+		    flsData = flsData | (0x0000ffffffffffff & word >> 16);
+		    fcrc = 0xffff & word;
+	 	    break;
+		    return;
+	    }
+	    if(need3==1){fcrc=fcrc|(0xff & word >> 56);return;}//If it was cut off before
+	    if(need3==2){fcrc=0xffff & (word >> 48);return;}//If we just barely needed the full line
+	    if(need3==3){
+		    int i=0;
+		    while(count>0){
+			    packets[i+8] = 0xff & (word >> 64-(i+1)*8);
+			    i+=1;
+			    count-=1;
+			    if(i*8==56){need4=1;}//Takes 0 if 4rth line not needed, Takes 1 if 1/2 crc needed, Takes 2 otherwise
+			    if(i*8==64){need4=2;break;}
+		    }
+		    if(0<i&&i<7){fcrc= 0xffff & (word >> 64-(i+2)*8);}//In case the whole word stays in
+		    if(i*8==56){fcrc= 0xffff & (word << 8)};//In case it cuts it off
 	    }
     }
     void read_4w(uint64_t word)
