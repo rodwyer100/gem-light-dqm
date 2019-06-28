@@ -53,14 +53,14 @@ class VFATdata
     ~VFATdata(){}
 
     //!Read first word from the block.
-    void read_fw(uint64_t word, int c)
+    void read_fw(uint64_t word)
     {
 	suppression = 0x4 & (word >> 61);
 	fPos = 0x3f & (word >> 56);
 	fCRCcheck = 0xff & (word >> 48);
 	fHeader = 0xff & (word >> 40);
-	if((suppression==2||suppression==3||suppression==6||suppression==7)&&Empty){return;}//Package suppression
-	if((suppression==1||suppression==5)&&Empty){fEC = 0xff & (word >> 32);fBC = 0xffff & (word >> 16);fcrc = 0xffff & word;return;}//Data Suppression
+	if((suppression==2||suppression==3||suppression==6||suppression==7)&&(fHeader==26||fHeader==86)){return;}//Package suppression
+	if((suppression==1||suppression==5)&&(fHeader==26||fHeader==86)){fEC = 0xff & (word >> 32);fBC = 0xffff & (word >> 16);fcrc = 0xffff & word;return;}//Data Suppression
 	need2=1;
 	fEC = 0xff & (word >> 32);
 	fBC = 0xffff & (word >> 16);
@@ -73,7 +73,7 @@ class VFATdata
     }
     
     //!Read second word from the block.
-    void read_sw(uint64_t word, int c)
+    void read_sw(uint64_t word)
     {
 	    if(suppression<4){
 	    	fmsData = fmsData | (0x0000ffffffffffff & word >> 16);
@@ -102,7 +102,7 @@ class VFATdata
 	    fcrc= 0xffff & (word << 8);//In case it cuts it off		     
     }
     //!Read third word from the block.
-    void read_tw(uint64_t word,int c)
+    void read_tw(uint64_t word)
     {
 	    if(suppression< 0x4){
 		    flsData = flsData | (0x0000ffffffffffff & word >> 16);
