@@ -59,8 +59,9 @@ class VFATdata
 	fPos = 0x3f & (word >> 56);
 	fCRCcheck = 0xff & (word >> 48);
 	fHeader = 0xff & (word >> 40);
-	if((suppression==2||suppression==3||suppression==6||suppression==7)&&Empty){need2=1;return;}//Package suppression
-	if((suppression==1||suppression==5)&&Empty){fEC = 0xff & (word >> 32);fBC = 0xffff & (word >> 16);fcrc = 0xffff & word;need2=1;return;}//Data Suppression
+	if((suppression==2||suppression==3||suppression==6||suppression==7)&&Empty){return;}//Package suppression
+	if((suppression==1||suppression==5)&&Empty){fEC = 0xff & (word >> 32);fBC = 0xffff & (word >> 16);fcrc = 0xffff & word;return;}//Data Suppression
+	need2=1;
 	fEC = 0xff & (word >> 32);
 	fBC = 0xffff & (word >> 16);
 	if(suppression< 0x4){
@@ -77,6 +78,7 @@ class VFATdata
 	    if(suppression<4){
 	    	fmsData = fmsData | (0x0000ffffffffffff & word >> 16);
 		flsData = 0xffff000000000000 & (word << 48);
+		need3=1;
 		return;
 	    }
 	    count=0;
