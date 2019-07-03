@@ -231,7 +231,7 @@ class GEBdata
     {
       m_ZeroSup = 0x00ffffff & (word >> 40);        /*!Zero Suppression*/
       m_InputID = 0b00011111 & (word >> 35);        /*!GLIB Input ID*/
-      m_Vwh = 0x0fff & (word >> 23);                /*!VFAT word count*/
+      m_Vwh = 0x0fff & (word >> 23);                /*!VFAT word count*///LOOK
       m_ErrorC = 0b0001111111111111 & (word >> 10);    /*!Thirteen Flags*/
       for(int i=0; i<13; ++i)
       {
