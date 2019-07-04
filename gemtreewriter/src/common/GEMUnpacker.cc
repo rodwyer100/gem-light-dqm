@@ -102,38 +102,67 @@ class GEMUnpacker
         //printf("%016llX\n", m_word);
             // fill the vfat data here
             //std::cout << "Number of VFAT words " << m_gebdata->Vwh() << std::endl;
-            int m_nvb = m_gebdata->Vwh() / 3; // number of VFAT2 blocks. Eventually add here sanity check
+            //int m_nvb = m_gebdata->Vwh() / 3; // number of VFAT2 blocks. Eventually add here sanity check
             //printf("N vfat blocks %d\n",m_nvb);
-            for (unsigned short k = 0; k < m_nvb; k++){
+              
+            //START OF VFAT READER  
+            
+            uint4_t helper=m_amcdata->suppression();
+            int bitcount=0;
+            while((bitcount/64)<m_gebdata- > Vwh()){
               VFATdata * m_vfatdata = new VFATdata();
-              // read 3 vfat block words, totaly 192 bits
-              std::fread(&m_word, sizeof(uint64_t), 1, m_file);
-        //printf("VFAT WORD 1\n");
-        //printf("%016llX\n", m_word);
-              m_vfatdata->read_fw(m_word);
-              if(getNeed2()>0){
-              std::fread(&m_word, sizeof(uint64_t), 1, m_file);
-        //printf("VFAT WORD 2\n");
-        //printf("%016llX\n", m_word);
-              m_vfatdata->read_sw(m_word);}
-              if(getNeed3()>0){
-               std::fread(&m_word, sizeof(uint64_t), 1, m_file); 
-        //printf("VFAT WORD 3\n");
-        //printf("%016llX\n", m_word);
-              m_vfatdata->read_tw(m_word);}
-              if(getNeed4()>0){
-                std::fread(&m_word, sizeof(uint64_t), 1, m_file); 
-                m_vfatdata->read_4w(m_word);
+              if(helper > 8){//PORTION THAT DEALS WITH CALIBRATION MODE
+                  std::fread(&m_word, sizeof(uint8_t), 1, m_file); bitcount+=8;
+                  m_vfatdata->rCH((int) m_word>>7);
+                  m_vfatdata->rEC(0b00000011& m_word);                  
+                  m_vfatdata->rPos(0b00011111& m_word);
+                  //ADD METHOD SPECIFICALLY FOR CHANNEL COUNT              
+                  m_gebdata->v_add(*m_vfatdata);
+                  delete m_vfatdata;
+                  continue;
               }
-              //
-        //printf("VFAT MS Data 3\n");
-        //printf("%016llX\n", m_vfatdata->msData());
-        //printf("VFAT LS Data 3\n");
-        //printf("%016llX\n", m_vfatdata->lsData());
-              //
+              std::fread(&m_word, sizeof(uint8_t), 1, m_file); m_vfatdata->rPos(0b00011111& m_word); bitcount+=8;
+              std::fread(&m_word, sizeof(uint8_t), 1, m_file); m_vfatdata->rCRCcheck(m_word); bitcount+=8;
+              std::fread(&m_word, sizeof(uint8_t), 1, m_file); m_vfatdata->rHeader(m_word); bitcount+=8;
+              if((helper==2||helper==3||helper==6||helper==7)&&(m_word==26||m_word==86)){
+                  m_gebdata->v_add(*m_vfatdata);
+                  delete m_vfatdata;
+                  continue;
+              }//Package suppression
+	          if((helper==1||helper==5)&&(mword==26||mword==86)){
+                  std::fread(&m_word, sizeof(uint8_t), 1, m_file); m_vfatdata->rEC(m_word); bitcount+=8;
+                  std::fread(&m_word, sizeof(uint16_t), 1, m_file); m_vfatdata->rBC(m_word); bitcount+=16;
+                  std::fread(&m_word, sizeof(uint16_t), 1, m_file); m_vfatdata->rcrc(m_word); bitcount+=16;                
+                  m_gebdata->v_add(*m_vfatdata);
+                  delete m_vfatdata;
+                  continue;
+              }//Data Suppression
+              std::fread(&m_word, sizeof(uint8_t), 1, m_file); m_vfatdata->rEC(m_word); bitcount+=8;
+              std::fread(&m_word, sizeof(uint16_t), 1, m_file); m_vfatdata->rBC(m_word); bitcount+=16;
+              if(helper<4){
+                  std::fread(&m_word, sizeof(uint64_t), 1, m_file); m_vfatdata->rlsData(m_word); bitcount+=64;
+                  std::fread(&m_word, sizeof(uint64_t), 1, m_file); m_vfatdata->rmsData(m_word); bitcount+=64;
+                  std::fread(&m_word, sizeof(uint16_t), 1, m_file); m_vfatdata->rcrc(m_word); bitcount+=16;
+                  m_gebdata->v_add(*m_vfatdata);
+                  delete m_vfatdata;
+                  continue;
+              }
+              std::fread(&m_word, sizeof(uint16_t), 1, m_file); m_vfatdata->rcontrolData(m_word); bitcount+=16;
+              uint16_t count=0xffff;
+              while (m_word > 0) {
+                  count += m_word & 0bx0000000000000001;
+                  m_word >>= 1;
+              }
+              for(int i=0; i< (int) count;i++){
+                  std::fread(&m_word, sizeof(uint8_t), 1, m_file); m_vfatdata->rpacket(m_word,i); bitcount+=8;
+              }
+              std::fread(&m_word, sizeof(uint16_t), 1, m_file); m_vfatdata->rcrc(m_word); bitcount+=16;                
               m_gebdata->v_add(*m_vfatdata);
               delete m_vfatdata;
             }
+            //END OF VFAT READER
+              
+              
             std::fread(&m_word, sizeof(uint64_t), 1, m_file);
             m_gebdata->setChamberTrailer(m_word);
             m_amcdata->g_add(*m_gebdata);
