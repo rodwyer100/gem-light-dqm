@@ -15,14 +15,9 @@ class VFATdata
     uint16_t fcrc_calc;                ///<Check Sum value recalculated, 16 bits
     int      fSlotNumber;              ///<Calculated chip position
     bool     fisBlockGood;             ///<Shows if block is good (control bits, chip ID and CRC checks)
-    uint16_t controlData;	       ///<For ZeroSuppression. Shows which packets (out of sixteen) are nonempty	
-    int count;			       ///<For ZeroSuppression. Shows how many packets are nonempty
-    uint8_t packets[16];	       ///<For Containing the Packets
-    int need2=0;		       ///<Determines if we need a second line
-    int need3=0;		       ///<Determines if we need to read the crc off in the third line
-    int need4=0;		       ///<Determines if we need to read a fourth instance to read off CRC codes.
-    uint4_t Suppression;	       ///<Determines what type, if any, of suppression is used
-
+    uint16_t fcontrolData;	       ///<For ZeroSuppression. Shows which packets (out of sixteen) are nonempty	
+    uint8_t fpackets[16];	       ///<For Containing the Packets
+    int fCH;
    public:
     //!Empty constructor. Functions used to assign data members.
     VFATdata(){}
@@ -53,93 +48,6 @@ class VFATdata
     ~VFATdata(){}
 
     //!Read first word from the block.
-    void read_fw(uint64_t word)
-    {
-	suppression = 0x4 & (word >> 61);
-	fPos = 0x3f & (word >> 56);
-	fCRCcheck = 0xff & (word >> 48);
-	fHeader = 0xff & (word >> 40);
-	if((suppression==2||suppression==3||suppression==6||suppression==7)&&(fHeader==26||fHeader==86)){return;}//Package suppression
-	if((suppression==1||suppression==5)&&(fHeader==26||fHeader==86)){fEC = 0xff & (word >> 32);fBC = 0xffff & (word >> 16);fcrc = 0xffff & word;return;}//Data Suppression
-	need2=1;
-	fEC = 0xff & (word >> 32);
-	fBC = 0xffff & (word >> 16);
-	if(suppression< 0x4){
-		fmsData = 0xffff000000000000 & (word << 48);
-		return;
-	}
-	//fmsData = 0xffff000000000000 & (word << 48);
-	controlData = 0xffff & word//a 16 bit number with bits indicating which packet is populated with anything (8 channels for a packet)
-    }
-    
-    //!Read second word from the block.
-    void read_sw(uint64_t word)
-    {
-	    if(suppression<4){
-	    	fmsData = fmsData | (0x0000ffffffffffff & word >> 16);
-		flsData = 0xffff000000000000 & (word << 48);
-		need3=1;
-		return;
-	    }
-	    count=0;
-	    //This populates an array of 8 bit numbers whose length corresponds to the number of packets.
- 	    uint16_t helper=controlData;
-	    while (helper > 0) {
-            	count += helper & 1;
-            	helper >>= 1;
-	    }
-	    int i=0;
-	    while(count>0){
-		    packets[i] = 0xffff & (word >> 64-(i+1)*8);
-		    i+=1;
-		    count-=1;
-		    if((i*8==56&&count==0)){need3=1;}
-		    if((i*8==64&&count==0)){need3=2;}
-		    //need3 will take 0 if third line not needed, 1 if needed just to read of half of crc,2 if all, 3 if needed for data and crc
-		    if(i*8==64){break;}
-	    }
-	    if(i<7){fcrc = 0xffff & word;need3=0;break;}//In case we don't even need a third line
-	    fcrc= 0xffff & (word << 8);//In case it cuts it off		     
-    }
-    //!Read third word from the block.
-    void read_tw(uint64_t word)
-    {
-	    if(suppression< 0x4){
-		    flsData = flsData | (0x0000ffffffffffff & word >> 16);
-		    fcrc = 0xffff & word;
-	 	    break;
-		    return;
-	    }
-	    if(need3==1){fcrc=fcrc|(0xff & word >> 56);return;}//If it was cut off before
-	    if(need3==2){fcrc=0xffff & (word >> 48);return;}//If we just barely needed the full line
-	    if(need3==3){
-		    int i=0;
-		    while(count>0){
-			    packets[i+8] = 0xff & (word >> 64-(i+1)*8);
-			    i+=1;
-			    count-=1;
-			    if(i*8==56){need4=1;}//Takes 0 if 4rth line not needed, Takes 1 if 1/2 crc needed, Takes 2 otherwise
-			    if(i*8==64){need4=2;break;}
-		    }
-		    if(0<i&&i<7){fcrc= 0xffff & (word >> 64-(i+2)*8);}//In case the whole word stays in
-		    if(i*8==56){fcrc= 0xffff & (word << 8)};//In case it cuts it off
-	    }
-    }
-    void read_4w(uint64_t word)
-    {
-	    if(need4==1){fcrc=fcrc|(0xff & word >> 56);break;}//if it had previously cut it off before
-	    fcrc=0xffff & (word >> 48);
-	    break;	    
-    }
-    int getNeed2(){
-	    return need2;	
-    }
-    int getNeed3(){
-	    return need3;	
-    }
-    int getNeed4(){
-	    return need4;	
-    }
 
     uint8_t   Pos        (){ return fPos;        }
     uint16_t  BC         (){ return fBC;         }
@@ -152,7 +60,21 @@ class VFATdata
     uint16_t  crc_calc   (){ return fcrc_calc;   }
     int       SlotNumber (){ return fSlotNumber; }
     bool      isBlockGood(){ return fisBlockGood;}
-
+    uint16_t  controlData(){ return fcontrolData;}
+    int       CH         (){ return fCH;}
+	
+	
+    void rPos(uint8_t _rPos){this.fPos=_rPos;}
+    void rCRCcheck(uint8_t _rCRCcheck){this.fCRCcheck=_rCRCcheck;}
+    void rHeader(uint8t_t _rHeader){this.fHeader=_rHeader;}
+    void rEC(uint8_t _rEC){this.fEC=_rEC;}
+    void rBC(uint16_t _rBC){this.fBC=_rBC;}
+    void rcrc(uint16_t _rcrc){this.fcrc=_rcrc;}
+    void rlsData(uint64_t _rlsData){this.flsData=_rlsData;}
+    void rmsData(uint64_t _rmsData){this.fmsData=_rmsData;}
+    void rcontrolData(uint16_t _rcontrolData){this.fcontrolData=_rcontrolData;}
+    void rpacket(uint8_t _rpacket,int i){this.fpackets[i]=_rpacket;}
+    void rCH(int _rCH){this.fCH=_rCH}
 };
 
 //!A class for GEB data
@@ -198,6 +120,8 @@ class GEBdata
       //!(7 0's):7    Stuck data:1    
       /*!Input status (warning): Data in InFIFO or EvtFIFO when L1A FIFO was empty. Only resets with resync or reset*/
 		  uint8_t m_Stuckd; 
+      unint8_t m_Calib;
+	//Bits for calibration mode to determine the channel
 
   public:
     //!Empty constructor. Functions used to assign data members.
@@ -229,6 +153,7 @@ class GEBdata
      */
     void setChamberHeader(uint64_t word)
     {
+      m_Calib=0b0111111 & (word >> 57);
       m_ZeroSup = 0x00ffffff & (word >> 40);        /*!Zero Suppression*/
       m_InputID = 0b00011111 & (word >> 35);        /*!GLIB Input ID*/
       m_Vwh = 0x0fff & (word >> 23);                /*!VFAT word count*///LOOK
@@ -269,7 +194,8 @@ class GEBdata
     uint8_t  InputID()  {return m_InputID;}   ///<Returns GLIB input ID
     uint16_t Vwh()      {return m_Vwh;}       ///<Returns VFAT word count (size of VFAT payload)
     uint16_t ErrorC()   {return m_ErrorC;}    ///<Returns thirteen flags in GEM Chamber Header
-
+    uint16_t Calib()    {return m_Calib;}
+	
     uint16_t OHCRC()    {return m_OHCRC;}     ///<Returns OH CRC 
     uint16_t Vwt()      {return m_Vwt;}       ///<Returns VFAT word count
     uint8_t  InFu()     {return m_InFu;}      ///<Returns InFIFO underflow flag
@@ -333,6 +259,9 @@ class AMCdata
       //!0000:4    TTS state:4    
       /*!Debug: GLIB TTS state at the moment when this event was built*/
       uint8_t  m_Tstate;
+	
+      unit4_t m_suppression;
+      //Variable for suppression data
 
     //GEM event trailer
 
@@ -427,6 +356,12 @@ class AMCdata
       m_Bstatus = 0x00ffffff & (word >> 16);  /*!Buffer Status*/
       m_GDcount = 0b00011111 & (word >> 11);  /*!GEM DAV count*/
       m_Tstate = 0b00000111 & word;           /*!TTS state*/
+      m_suppression = (word >> 4);	      /*!suppresion word*/
+    }
+	
+    uint4_t getSupp()
+    {
+      return this.suppression
     }
 
     //!Reads the word for the GEM Event Trailer
@@ -471,6 +406,7 @@ class AMCdata
     uint32_t CRC()    {return m_CRC;}
     uint8_t L1AT()    {return m_L1AT;}
     uint32_t DlengthT()    {return m_DlengthT;}
+    uint4_t suppression()   {return m_suppression;}
 
     //!Adds GEB data to vector
     void g_add(GEBdata g){gebd.push_back(g);}
