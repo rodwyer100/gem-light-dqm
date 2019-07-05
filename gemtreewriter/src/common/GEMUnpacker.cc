@@ -112,52 +112,52 @@ class GEMUnpacker
             while((bitcount/64)<m_gebdata- > Vwh()){
               VFATdata * m_vfatdata = new VFATdata();
               if(helper > 8){//PORTION THAT DEALS WITH CALIBRATION MODE
-                  std::fread(&m_word, sizeof(uint8_t), 1, m_file); bitcount+=8;
-                  m_vfatdata->rCH((int) m_word>>7);
-                  m_vfatdata->rEC(0b00000011& m_word);                  
-                  m_vfatdata->rPos(0b00011111& m_word);
+                  std::fread(&m_word8, sizeof(uint8_t), 1, m_file); bitcount+=8;
+                  m_vfatdata->rCH((int) m_word8>>7);
+                  m_vfatdata->rEC(0b00000011& m_word8);                  
+                  m_vfatdata->rPos(0b00011111& m_word8);
                   //ADD METHOD SPECIFICALLY FOR CHANNEL COUNT              
                   m_gebdata->v_add(*m_vfatdata);
                   delete m_vfatdata;
                   continue;
               }
-              std::fread(&m_word, sizeof(uint8_t), 1, m_file); m_vfatdata->rPos(0b00011111& m_word); bitcount+=8;
-              m_vfatdata->rCRCcheck(m_word>>7);
+              std::fread(&m_word8, sizeof(uint8_t), 1, m_file); m_vfatdata->rPos(0b00011111& m_word8); bitcount+=8;
+              m_vfatdata->rCRCcheck(m_word8>>7);
 	      //std::fread(&m_word, sizeof(uint8_t), 1, m_file); m_vfatdata->rCRCcheck(m_word); bitcount+=8;
-              std::fread(&m_word, sizeof(uint8_t), 1, m_file); m_vfatdata->rHeader(m_word); bitcount+=8;
+              std::fread(&m_word8, sizeof(uint8_t), 1, m_file); m_vfatdata->rHeader(m_word8); bitcount+=8;
               if((helper==2||helper==3||helper==6||helper==7)&&(m_word==26||m_word==86)){
                   m_gebdata->v_add(*m_vfatdata);
                   delete m_vfatdata;
                   continue;
               }//Package suppression
 	          if((helper==1||helper==5)&&(mword==26||mword==86)){
-                  std::fread(&m_word, sizeof(uint8_t), 1, m_file); m_vfatdata->rEC(m_word); bitcount+=8;
-                  std::fread(&m_word, sizeof(uint16_t), 1, m_file); m_vfatdata->rBC(m_word); bitcount+=16;
-                  std::fread(&m_word, sizeof(uint16_t), 1, m_file); m_vfatdata->rcrc(m_word); bitcount+=16;                
+                  std::fread(&m_word8, sizeof(uint8_t), 1, m_file); m_vfatdata->rEC(m_word8); bitcount+=8;
+                  std::fread(&m_word16, sizeof(uint16_t), 1, m_file); m_vfatdata->rBC(m_word16); bitcount+=16;
+                  std::fread(&m_word16, sizeof(uint16_t), 1, m_file); m_vfatdata->rcrc(m_word16); bitcount+=16;                
                   m_gebdata->v_add(*m_vfatdata);
                   delete m_vfatdata;
                   continue;
               }//Data Suppression
-              std::fread(&m_word, sizeof(uint8_t), 1, m_file); m_vfatdata->rEC(m_word); bitcount+=8;
-              std::fread(&m_word, sizeof(uint16_t), 1, m_file); m_vfatdata->rBC(m_word); bitcount+=16;
+              std::fread(&m_word8, sizeof(uint8_t), 1, m_file); m_vfatdata->rEC(m_word8); bitcount+=8;
+              std::fread(&m_word16, sizeof(uint16_t), 1, m_file); m_vfatdata->rBC(m_word16); bitcount+=16;
               if(helper<4){
                   std::fread(&m_word, sizeof(uint64_t), 1, m_file); m_vfatdata->rlsData(m_word); bitcount+=64;
                   std::fread(&m_word, sizeof(uint64_t), 1, m_file); m_vfatdata->rmsData(m_word); bitcount+=64;
-                  std::fread(&m_word, sizeof(uint16_t), 1, m_file); m_vfatdata->rcrc(m_word); bitcount+=16;
+                  std::fread(&m_word16, sizeof(uint16_t), 1, m_file); m_vfatdata->rcrc(m_word16); bitcount+=16;
                   m_gebdata->v_add(*m_vfatdata);
                   delete m_vfatdata;
                   continue;
               }
-              std::fread(&m_word, sizeof(uint16_t), 1, m_file); m_vfatdata->rcontrolData(m_word); bitcount+=16;
+              std::fread(&m_word16, sizeof(uint16_t), 1, m_file); m_vfatdata->rcontrolData(m_word16); bitcount+=16;
               uint16_t count=0xffff;
-              while (m_word > 0) {
-                  count += m_word & 0bx0000000000000001;
-                  m_word >>= 1;
+              while (m_word16 > 0) {
+                  count += m_word16 & 0bx0000000000000001;
+                  m_word16 >>= 1;
               }
               for(int i=0; i< (int) count;i++){
-                  std::fread(&m_word, sizeof(uint8_t), 1, m_file); m_vfatdata->rpacket(m_word,i); bitcount+=8;
+                  std::fread(&m_word8, sizeof(uint8_t), 1, m_file); m_vfatdata->rpacket(m_word8,i); bitcount+=8;
               }
-              std::fread(&m_word, sizeof(uint16_t), 1, m_file); m_vfatdata->rcrc(m_word); bitcount+=16;                
+              std::fread(&m_word16, sizeof(uint16_t), 1, m_file); m_vfatdata->rcrc(m_word16); bitcount+=16;                
               m_gebdata->v_add(*m_vfatdata);
               delete m_vfatdata;
             }
