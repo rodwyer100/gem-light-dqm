@@ -193,6 +193,8 @@ class GEMUnpacker
   private:
     std::FILE *m_file;
     uint64_t m_word;
+    uint8_t m_word8;
+    uint16_t m_word16;	
     uint32_t m_word32;
     bool type;
     AMC13Event * m_AMC13Event;
