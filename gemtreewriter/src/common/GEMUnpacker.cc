@@ -122,7 +122,8 @@ class GEMUnpacker
                   continue;
               }
               std::fread(&m_word, sizeof(uint8_t), 1, m_file); m_vfatdata->rPos(0b00011111& m_word); bitcount+=8;
-              std::fread(&m_word, sizeof(uint8_t), 1, m_file); m_vfatdata->rCRCcheck(m_word); bitcount+=8;
+              m_vfatdata->rCRCcheck(m_word>>7);
+	      //std::fread(&m_word, sizeof(uint8_t), 1, m_file); m_vfatdata->rCRCcheck(m_word); bitcount+=8;
               std::fread(&m_word, sizeof(uint8_t), 1, m_file); m_vfatdata->rHeader(m_word); bitcount+=8;
               if((helper==2||helper==3||helper==6||helper==7)&&(m_word==26||m_word==86)){
                   m_gebdata->v_add(*m_vfatdata);
