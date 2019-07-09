@@ -109,12 +109,18 @@ class GEMUnpacker
             
             uint4_t helper=m_amcdata->suppression();
             int bitcount=0;
-            int vfcount=0;
-            while(((bitcount/64)<m_gebdata- > Vwh())&& vfcount<23){
-	      vfcount+=1;
+            //int vfcount=0;//vfcount+=1;
+            while((bitcount/64)<m_gebdata- > Vwh()){
               VFATdata * m_vfatdata = new VFATdata();
+	      std::fread(&m_word8, sizeof(uint8_t), 1, m_file); 
+	      if(m_word8==0b11111111){
+		      while((bitcount/64)<m_gebdata- > Vwh()){
+		      std::fread(&m_word8, sizeof(uint8_t), 1, m_file);bitcount+=8;
+		      }
+		      break;
+	      }    
+	      bitcount+=8;
               if(helper > 8){//PORTION THAT DEALS WITH CALIBRATION MODE
-                  std::fread(&m_word8, sizeof(uint8_t), 1, m_file); bitcount+=8;
                   m_vfatdata->rCH((int) m_word8>>7);
                   m_vfatdata->rEC(0b00000011& m_word8);                  
                   m_vfatdata->rPos(0b00011111& m_word8);
@@ -123,7 +129,7 @@ class GEMUnpacker
                   delete m_vfatdata;
                   continue;
               }
-              std::fread(&m_word8, sizeof(uint8_t), 1, m_file); m_vfatdata->rPos(0b00011111& m_word8); bitcount+=8;
+              m_vfatdata->rPos(0b00011111& m_word8);
               m_vfatdata->rCRCcheck(m_word8>>7);
 	      //std::fread(&m_word, sizeof(uint8_t), 1, m_file); m_vfatdata->rCRCcheck(m_word); bitcount+=8;
               std::fread(&m_word8, sizeof(uint8_t), 1, m_file); m_vfatdata->rHeader(m_word8); bitcount+=8;
