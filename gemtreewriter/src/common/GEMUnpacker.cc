@@ -109,7 +109,9 @@ class GEMUnpacker
             
             uint4_t helper=m_amcdata->suppression();
             int bitcount=0;
-            while((bitcount/64)<m_gebdata- > Vwh()){
+            int vfcount=0;
+            while(((bitcount/64)<m_gebdata- > Vwh())&& vfcount<23){
+	      vfcount+=1;
               VFATdata * m_vfatdata = new VFATdata();
               if(helper > 8){//PORTION THAT DEALS WITH CALIBRATION MODE
                   std::fread(&m_word8, sizeof(uint8_t), 1, m_file); bitcount+=8;
