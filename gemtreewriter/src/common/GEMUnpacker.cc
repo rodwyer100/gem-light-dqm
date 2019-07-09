@@ -111,7 +111,6 @@ class GEMUnpacker
             int bitcount=0;
             //int vfcount=0;//vfcount+=1;
             while((bitcount/64)<m_gebdata- > Vwh()){
-              VFATdata * m_vfatdata = new VFATdata();
 	      std::fread(&m_word8, sizeof(uint8_t), 1, m_file); 
 	      if(m_word8==0b11111111){
 		      while((bitcount/64)<m_gebdata- > Vwh()){
@@ -120,6 +119,7 @@ class GEMUnpacker
 		      break;
 	      }    
 	      bitcount+=8;
+	      VFATdata * m_vfatdata = new VFATdata();
               if(helper > 8){//PORTION THAT DEALS WITH CALIBRATION MODE
                   m_vfatdata->rCH((int) m_word8>>7);
                   m_vfatdata->rEC(0b00000011& m_word8);                  
